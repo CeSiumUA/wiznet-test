@@ -103,9 +103,17 @@ int main(void)
   else{
     const uint8_t message[] = "Version missmatched... Exiting\r\n";
     HAL_UART_Transmit(&huart2, message, sizeof(message), 1000);
-    return;
+    return 0;
   }
+  uint8_t target_ip_address[IP_ADDRESS_SIZE] = {192, 168, 0, 178};
   w5500_set_addresses();
+  const uint8_t connecting_message[] = "Connecting...\r\n";
+  HAL_UART_Transmit(&huart2, connecting_message, sizeof(connecting_message), 1000);
+  uint8_t res = w5500_connect(24541, target_ip_address);
+  if(res == 255){
+    const uint8_t message[] = "Socket is closed\r\n";
+    HAL_UART_Transmit(&huart2, message, sizeof(message), 1000);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */

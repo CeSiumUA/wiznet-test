@@ -35,7 +35,26 @@
 
 #define WIZCHIP_SREG_MR             0x0000
 
+#define WIZCHIP_SREG_MR_MULTI       (1<<7)
+#define WIZCHIP_SREG_MR_BCASTB      (1<<6)
+#define WIZCHIP_SREG_MR_ND          (1<<5)
+#define WIZCHIP_SREG_MR_UCASTB      (1<<4)
+#define WIZCHIP_SREG_MR_P3          (1<<3)
+#define WIZCHIP_SREG_MR_P2          (1<<2)
+#define WIZCHIP_SREG_MR_P1          (1<<1)
+#define WIZCHIP_SREG_MR_P0          (1<<0)
+
 #define WIZCHIP_SREG_CR             0x0001
+
+#define WIZCHIP_SREG_CR_OPEN        0x01
+#define WIZCHIP_SREG_CR_LISTEN      0x02
+#define WIZCHIP_SREG_CR_CONNECT     0x04
+#define WIZCHIP_SREG_CR_DISCON      0x08
+#define WIZCHIP_SREG_CR_CLOSE       0x10
+#define WIZCHIP_SREG_CR_SEND        0x20
+#define WIZCHIP_SREG_CR_SEND_MAC    0x21
+#define WIZCHIP_SREG_CR_SEND_KEEP   0x22
+#define WIZCHIP_SREG_CR_RECV        0x40
 
 #define WIZCHIP_SREG_IR             0x0002
 
@@ -112,12 +131,18 @@
 #define MAC_ADDRESS_SIZE            6
 #define IP_ADDRESS_SIZE             4
 
+#define htons(val)                  ((val << 8) & 0xFF00) | ((val >> 8) & 0xFF)
+#define ntohs(val)                  htons(val)
+
 #define WIZCHIP_CREG_VERSIONR       0x0039
 
 void w5500_write(uint16_t address, uint8_t block, uint8_t *data, size_t len);
 void w5500_read(uint16_t address, uint8_t block, uint8_t *data, size_t len);
 uint8_t w5500_get_version(void);
 void w5500_set_addresses(void);
-uint8_t w5500_connect(uint16_t port);
+uint8_t w5500_connect(uint16_t port, uint8_t dest_ip_addr[IP_ADDRESS_SIZE]);
+void w5500_write_command(uint8_t cmd, uint8_t socket);
+uint8_t w5500_read_byte(uint16_t address, uint8_t block);
+void w5500_close_socket(uint8_t socket);
 
 #endif
