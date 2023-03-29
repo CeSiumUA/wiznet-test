@@ -93,26 +93,26 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_SET);
-  const uint8_t greetings[] = "Starting MCU\r\n";
-  HAL_UART_Transmit(&huart2, greetings, sizeof(greetings), 1000);
+  HAL_UART_Transmit(&huart2, (uint8_t *)"Starting MCU\r\n", 15, 1000);
+  w5500_reset();
+  HAL_UART_Transmit(&huart2, (uint8_t *)"Chip resetted\r\n", 16, 1000);
   uint8_t version = w5500_get_version();
   if(version == 4){
-    const uint8_t message[] = "Version matched!\r\n";
-    HAL_UART_Transmit(&huart2, message, sizeof(message), 1000);
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Version matched!\r\n", 19, 1000);
   }
   else{
-    const uint8_t message[] = "Version missmatched... Exiting\r\n";
-    HAL_UART_Transmit(&huart2, message, sizeof(message), 1000);
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Version missmatched... Exiting\r\n", 33, 1000);
     return 0;
   }
   uint8_t target_ip_address[IP_ADDRESS_SIZE] = {192, 168, 0, 178};
   w5500_set_addresses();
-  const uint8_t connecting_message[] = "Connecting...\r\n";
-  HAL_UART_Transmit(&huart2, connecting_message, sizeof(connecting_message), 1000);
-  uint8_t res = w5500_connect(24541, target_ip_address);
-  if(res == 255){
-    const uint8_t message[] = "Socket is closed\r\n";
-    HAL_UART_Transmit(&huart2, message, sizeof(message), 1000);
+  HAL_UART_Transmit(&huart2, (uint8_t *)"Connecting...\r\n", 16, 1000);
+  uint8_t socket = w5500_connect(24541, target_ip_address);
+  if(socket == 255){
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Socket is closed\r\n", 19, 1000);
+  }
+  else{
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Connected to server!\r\n", 23, 1000);
   }
   /* USER CODE END 2 */
 
@@ -120,6 +120,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    w5500_send(socket, (uint8_t *)"Hello world!\r\n", 15);
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Data sent to server!\r\n", 23, 1000);
+    HAL_Delay(5000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

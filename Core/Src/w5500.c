@@ -2,6 +2,7 @@
 
 static void cs_on(void);
 static void cs_off(void);
+static uint16_t w5500_get_tx_fsr(uint8_t socket);
 
 uint8_t mac[MAC_ADDRESS_SIZE] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 uint8_t ip_address[IP_ADDRESS_SIZE] = {192, 168, 0, 133};
@@ -13,6 +14,11 @@ void w5500_set_addresses(void){
     w5500_write(WIZCHIP_CREG_SIPR_0, WIZCHIP_CREG_BLOCK, ip_address, sizeof(ip_address));
     w5500_write(WIZCHIP_CREG_GAR_0, WIZCHIP_CREG_BLOCK, gateway_address, sizeof(gateway_address));
     w5500_write(WIZCHIP_CREG_SUBR_0, WIZCHIP_CREG_BLOCK, subnet_mask, sizeof(subnet_mask));
+}
+
+void w5500_reset(void){
+    w5500_write_byte(WIZCHIP_CREG_MR, WIZCHIP_CREG_BLOCK, WIZCHIP_CREG_MR_RST);
+    while(w5500_read_byte(WIZCHIP_CREG_MR, WIZCHIP_CREG_BLOCK) & WIZCHIP_CREG_MR_RST){}
 }
 
 uint8_t w5500_connect(uint16_t port, uint8_t dest_ip_addr[IP_ADDRESS_SIZE]){
@@ -47,15 +53,52 @@ uint8_t w5500_connect(uint16_t port, uint8_t dest_ip_addr[IP_ADDRESS_SIZE]){
     w5500_write(WIZCHIP_SREG_DPORT_0, WIZCHIP_SREG_BLOCK(socket), (uint8_t *)&port, sizeof(port));
     w5500_write_command(WIZCHIP_SREG_CR_CONNECT, socket);
 
-    while (w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket)) != WIZCHIP_SREG_SR_ESTABLISHED)
+    uint8_t sr = w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket));
+
+    volatile uint8_t ir = w5500_read_byte(WIZCHIP_SREG_IR, WIZCHIP_SREG_BLOCK(socket));
+
+    while (sr != WIZCHIP_SREG_SR_ESTABLISHED)
     {
-        if(w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket)) == WIZCHIP_SREG_SR_CLOSED){
+        if(sr == WIZCHIP_SREG_SR_CLOSED){
             return 255;
         }
+        sr = w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket));
+        ir = w5500_read_byte(WIZCHIP_SREG_IR, WIZCHIP_SREG_BLOCK(socket));
     }
     
 
     return socket;
+}
+
+void w5500_send(uint8_t socket, uint8_t *data, size_t len){
+    uint8_t status=0;
+	uint16_t freesize=0;
+
+    do{
+        freesize = w5500_get_tx_fsr(socket);
+        status = w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket));
+        if ((status != WIZCHIP_SREG_SR_ESTABLISHED) && (status != WIZCHIP_SREG_SR_CLOSE_WAIT)){
+            return;
+        }
+    }while (freesize < len);
+
+    uint16_t ptr = w5500_read_short(WIZCHIP_SREG_TX_WR_0, WIZCHIP_SREG_BLOCK(socket));
+    
+    w5500_write(ptr, WIZCHIP_TXBUF_BLOCK(socket), data, len);
+
+    ptr += len;
+
+    w5500_write_short(WIZCHIP_SREG_TX_WR_0, WIZCHIP_SREG_BLOCK(socket), ptr);
+    
+    w5500_write_command(WIZCHIP_SREG_CR_SEND, socket);
+
+    uint8_t ir = w5500_read_byte(WIZCHIP_SREG_IR, WIZCHIP_SREG_BLOCK(socket));
+    while((ir & WIZCHIP_SREG_IR_SEND_OK) != WIZCHIP_SREG_IR_SEND_OK){}
+    w5500_write_byte(WIZCHIP_SREG_IR, WIZCHIP_SREG_BLOCK(socket), WIZCHIP_SREG_IR_SEND_OK);
+}
+
+void w5500_send_byte(uint8_t socket, uint8_t byte){
+    w5500_send(socket, &byte, sizeof(byte));
 }
 
 void w5500_close_socket(uint8_t socket){
@@ -116,6 +159,23 @@ uint8_t w5500_read_byte(uint16_t address, uint8_t block){
     return data;
 }
 
+uint16_t w5500_read_short(uint16_t address, uint8_t block){
+    uint16_t data;
+
+    w5500_read(address, block, (uint8_t *)&data, sizeof(data));
+
+    data = ntohs(data);
+
+    return data;
+}
+
+void w5500_write_short(uint16_t address, uint8_t block, uint16_t data){
+
+    data = ntohs(data);
+
+    w5500_write(address, block, (uint8_t *)&data, sizeof(data));
+}
+
 void w5500_write_byte(uint16_t address, uint8_t block, uint8_t data){
     w5500_write(address, block, &data, sizeof(data));
 }
@@ -126,4 +186,20 @@ static void cs_on(void){
 
 static void cs_off(void){
     HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_SET);
+}
+
+static uint16_t w5500_get_tx_fsr(uint8_t socket){
+    uint16_t val, prev;
+
+    prev = w5500_read_short(WIZCHIP_SREG_TX_FSR_0, WIZCHIP_SREG_BLOCK(socket));
+    //TODO optimise
+    while(1){
+        val = w5500_read_short(WIZCHIP_SREG_TX_FSR_0, WIZCHIP_SREG_BLOCK(socket));
+        if(val == prev){
+            return val;
+        }
+
+        prev = val;
+    }
+
 }
