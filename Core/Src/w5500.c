@@ -33,14 +33,18 @@ uint8_t w5500_connect(uint16_t port, uint8_t dest_ip_addr[IP_ADDRESS_SIZE]){
 
     uint16_t src_port = htons(1024);
 
-    w5500_write(WIZCHIP_SREG_PORT_0, WIZCHIP_SREG_BLOCK(socket), &src_port, sizeof(src_port));
+    w5500_write(WIZCHIP_SREG_PORT_0, WIZCHIP_SREG_BLOCK(socket), (uint8_t *)&src_port, sizeof(src_port));
 
     w5500_write_command(WIZCHIP_SREG_CR_OPEN, socket);
 
+    while (w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket)) != WIZCHIP_SREG_SR_INIT){
+        return 255;
+    }
+
     port = htons(port);
 
-    w5500_write(WIZCHIP_SREG_DIPR_0, WIZCHIP_SREG_BLOCK(socket), dest_ip_addr, sizeof(dest_ip_addr));
-    w5500_write(WIZCHIP_SREG_DPORT_0, WIZCHIP_SREG_BLOCK(socket), &port, sizeof(port));
+    w5500_write(WIZCHIP_SREG_DIPR_0, WIZCHIP_SREG_BLOCK(socket), dest_ip_addr, IP_ADDRESS_SIZE);
+    w5500_write(WIZCHIP_SREG_DPORT_0, WIZCHIP_SREG_BLOCK(socket), (uint8_t *)&port, sizeof(port));
     w5500_write_command(WIZCHIP_SREG_CR_CONNECT, socket);
 
     while (w5500_read_byte(WIZCHIP_SREG_SR, WIZCHIP_SREG_BLOCK(socket)) != WIZCHIP_SREG_SR_ESTABLISHED)
@@ -105,21 +109,15 @@ void w5500_read(uint16_t address, uint8_t block, uint8_t *data, size_t len){
 }
 
 uint8_t w5500_read_byte(uint16_t address, uint8_t block){
-    cs_on();
-    uint8_t addr1 = address >> 8;
-    HAL_SPI_Transmit(&hspi2, &addr1, 1, 1000);
-    uint8_t addr2 = address & 0xFF;
-    HAL_SPI_Transmit(&hspi2, &addr2, 1, 1000);
-    block <<= 3;
-    block &=~0b100;
-    block &=~0b011;
-    block |= 0b000;
-    HAL_SPI_Transmit(&hspi2, &block, 1, 1000);
     uint8_t data;
-    HAL_SPI_Receive(&hspi2, &data, sizeof(data), 1000);
-    cs_off();
+
+    w5500_read(address, block, &data, sizeof(data));
 
     return data;
+}
+
+void w5500_write_byte(uint16_t address, uint8_t block, uint8_t data){
+    w5500_write(address, block, &data, sizeof(data));
 }
 
 static void cs_on(void){
