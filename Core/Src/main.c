@@ -104,7 +104,7 @@ int main(void)
     HAL_UART_Transmit(&huart2, (uint8_t *)"Version missmatched... Exiting\r\n", 33, 1000);
     return 0;
   }
-  uint8_t target_ip_address[IP_ADDRESS_SIZE] = {192, 168, 0, 178};
+  uint8_t target_ip_address[IP_ADDRESS_SIZE] = {10, 10, 10, 5};
   w5500_set_addresses();
   HAL_UART_Transmit(&huart2, (uint8_t *)"Connecting...\r\n", 16, 1000);
   uint8_t socket = w5500_connect(24541, target_ip_address);
@@ -122,7 +122,7 @@ int main(void)
   {
     w5500_send(socket, (uint8_t *)"Hello world!\r\n", 15);
     HAL_UART_Transmit(&huart2, (uint8_t *)"Data sent to server!\r\n", 23, 1000);
-    HAL_Delay(5000);
+    HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

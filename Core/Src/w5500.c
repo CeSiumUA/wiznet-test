@@ -5,8 +5,8 @@ static void cs_off(void);
 static uint16_t w5500_get_tx_fsr(uint8_t socket);
 
 uint8_t mac[MAC_ADDRESS_SIZE] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-uint8_t ip_address[IP_ADDRESS_SIZE] = {192, 168, 0, 133};
-uint8_t gateway_address[IP_ADDRESS_SIZE] = {192, 168, 0, 1};
+uint8_t ip_address[IP_ADDRESS_SIZE] = {10, 10, 10, 3};
+uint8_t gateway_address[IP_ADDRESS_SIZE] = {10, 10, 10, 1};
 uint8_t subnet_mask[IP_ADDRESS_SIZE] = {255, 255, 255, 0};
 
 void w5500_set_addresses(void){
